@@ -1,0 +1,46 @@
+pipeline {
+    agent {label "jdk17"}
+
+    stages {
+        stage('clone codebase') {
+            steps {
+                echo 'cloning project codebase'
+                git (url : 'https://github.com/AGlandier/maven-project.git',
+                branch: 'master',
+                credentialsId: 'ced4github')
+            }
+        }
+        stage('compiling') {
+            steps {
+                echo 'compiling'
+                withMaven(maven : 'localMaven') {
+                    sh 'mvn compile' 
+                }
+            }
+        }
+        stage('Testing') {
+            steps {
+                echo 'UnitTests running'
+                withMaven(maven : 'localMaven') {
+                    sh 'mvn test' 
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Project packaging'
+                withMaven(maven : 'localMaven') {
+                    sh 'mvn -B -DskipTests clean package' 
+                }
+            }
+        }
+        stage('Sonar analysis') {
+            steps {
+                echo 'Run SonarQube analysis'
+                withSonarQubeEnv(installationName : 'sonarServer', credentialsId: 'cred4sonar'){
+                    sh "mvn clean package sonar:sonar"
+                }
+            }
+        }
+    }
+}
